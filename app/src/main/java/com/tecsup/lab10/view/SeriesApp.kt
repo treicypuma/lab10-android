@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -31,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.tecsup.lab10.data.ProductoApiService
 import com.tecsup.lab10.data.SerieApiService
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -41,26 +43,34 @@ fun SeriesApp() {
     val retrofit = Retrofit.Builder().baseUrl(urlBase)
         .addConverterFactory(GsonConverterFactory.create()).build()
     val servicio = retrofit.create(SerieApiService::class.java)
+    val servicioProd = retrofit.create(ProductoApiService::class.java)
     val navController = rememberNavController()
 
     Scaffold(
         modifier = Modifier.padding(top = 40.dp),
         topBar = { BarraSuperior() },
         bottomBar = { BarraInferior(navController) },
-        floatingActionButton = { BotonFAB(navController, servicio) },
-        content = { paddingValues -> Contenido(paddingValues, navController, servicio) }
+        floatingActionButton = { BotonFAB(navController) },
+        content = { paddingValues ->
+            Contenido(paddingValues, navController, servicio, servicioProd)
+        }
     )
 }
 
 @Composable
-fun BotonFAB(navController: NavHostController, servicio: SerieApiService) {
+fun BotonFAB(navController: NavHostController) {
     val cbeState by navController.currentBackStackEntryAsState()
     val rutaActual = cbeState?.destination?.route
-    if (rutaActual == "series") {
+    if (rutaActual == "series" || rutaActual == "productos") {
         FloatingActionButton(
             containerColor = Color.Magenta,
             contentColor = Color.White,
-            onClick = { navController.navigate("serieNuevo") }
+            onClick = {
+                if (rutaActual == "series")
+                    navController.navigate("serieNuevo")
+                else
+                    navController.navigate("productoNuevo")
+            }
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
@@ -107,6 +117,12 @@ fun BarraInferior(navController: NavHostController) {
             selected = rutaActual == "series",
             onClick = { navController.navigate("series") }
         )
+        NavigationBarItem(
+            icon = { Icon(Icons.Outlined.ShoppingCart, contentDescription = "Productos") },
+            label = { Text("Productos") },
+            selected = rutaActual == "productos",
+            onClick = { navController.navigate("productos") }
+        )
     }
 }
 
@@ -114,7 +130,8 @@ fun BarraInferior(navController: NavHostController) {
 fun Contenido(
     pv: PaddingValues,
     navController: NavHostController,
-    servicio: SerieApiService
+    servicio: SerieApiService,
+    servicioProd: ProductoApiService
 ) {
     Box(
         modifier = Modifier
@@ -126,6 +143,8 @@ fun Contenido(
             startDestination = "inicio"
         ) {
             composable("inicio") { ScreenInicio() }
+
+            // Series
             composable("series") { ContenidoSeriesListado(navController, servicio) }
             composable("serieNuevo") {
                 ContenidoSerieEditar(navController, servicio, 0)
@@ -141,6 +160,24 @@ fun Contenido(
                 arguments = listOf(navArgument("id") { type = NavType.IntType })
             ) {
                 ContenidoSerieEliminar(navController, servicio, it.arguments!!.getInt("id"))
+            }
+
+            // Productos
+            composable("productos") { ContenidoProductosListado(navController, servicioProd) }
+            composable("productoNuevo") {
+                ContenidoProductoEditar(navController, servicioProd, 0)
+            }
+            composable(
+                "productoVer/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.IntType })
+            ) {
+                ContenidoProductoEditar(navController, servicioProd, it.arguments!!.getInt("id"))
+            }
+            composable(
+                "productoDel/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.IntType })
+            ) {
+                ContenidoProductoEliminar(navController, servicioProd, it.arguments!!.getInt("id"))
             }
         }
     }
